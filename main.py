@@ -1,3 +1,4 @@
+import json
 import time
 import os
 import shutil
@@ -17,6 +18,33 @@ if not client.api_key:
 
 # Define the Downloads folder path
 DOWNLOADS_FOLDER = os.path.expanduser("~/Downloads")
+SETTINGS_FILE = "settings.json"
+
+# Default settings for feature toggles
+DEFAULT_SETTINGS = {
+    "rename_files": True,
+    "organize_folders": True
+}
+
+def load_settings():
+    """Load settings from a JSON file; if not found, write default settings."""
+    if not os.path.exists(SETTINGS_FILE):
+        save_settings(DEFAULT_SETTINGS)
+        return DEFAULT_SETTINGS
+    try:
+        with open(SETTINGS_FILE, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print("Error loading settings:", e)
+        return DEFAULT_SETTINGS
+
+def save_settings(settings):
+    """Save the provided settings dictionary to the JSON file."""
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f, indent=4)
+    except Exception as e:
+        print("Error saving settings:", e)
 
 # ---------------- Helper Functions ----------------
 
@@ -98,6 +126,7 @@ def extract_keywords(text):
             temperature=0.5,
         )
         keywords_text = response.choices[0].message.content.strip()
+        # Sanitize the keywords: lower-case and trim extra spaces
         keywords = [k.strip().lower() for k in keywords_text.split(",") if k.strip()]
         return keywords[:2]
     except Exception as e:
@@ -108,19 +137,29 @@ def rename_and_sort_file(file_path, category, keywords):
     """
     Renames the file based on the extracted keywords and moves it into a folder under the Downloads folder.
     Files are moved directly into folders like ~/Downloads/PDFs, ~/Downloads/Images, etc.
+    The behavior depends on the feature toggles loaded from settings.json:
+      - If 'rename_files' is false, the original file name is preserved.
+      - If 'organize_folders' is false, the file remains in the Downloads folder.
     """
-    target_folder = os.path.join(DOWNLOADS_FOLDER, category)
-    os.makedirs(target_folder, exist_ok=True)
-    
+    current_settings = load_settings()  # Always load the latest settings
     base, ext = os.path.splitext(os.path.basename(file_path))
     
-    if keywords:
-        new_base_name = "_".join(keywords)
+    # Check if renaming is enabled
+    if current_settings.get("rename_files", True):
+        if keywords:
+            new_base_name = "_".join(keywords)
+        else:
+            new_base_name = base
     else:
         new_base_name = base
-    
-    new_file_name = f"{new_base_name}{ext}"
-    new_file_path = os.path.join(target_folder, new_file_name)
+
+    # Check if folder organization is enabled
+    if current_settings.get("organize_folders", True):
+        target_folder = os.path.join(DOWNLOADS_FOLDER, category)
+        os.makedirs(target_folder, exist_ok=True)
+        new_file_path = os.path.join(target_folder, f"{new_base_name}{ext}")
+    else:
+        new_file_path = os.path.join(DOWNLOADS_FOLDER, f"{new_base_name}{ext}")
     
     try:
         shutil.move(file_path, new_file_path)
