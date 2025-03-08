@@ -429,9 +429,14 @@ class PreferencesWindowController(objc.lookUpClass("NSWindowController")):
         # Create a window with a native macOS style
         rect = NSMakeRect(200, 300, 550, 500)
         style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
-        self.setWindow_(NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(rect, style, NSBackingStoreBuffered, False))
-        self.window().setTitle_("AI Download Organizer Preferences")
-
+        window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(rect, style, NSBackingStoreBuffered, False)
+        window.setTitle_("AI Download Organizer Preferences")
+        
+        # Important: Set window to not release when closed
+        window.setReleasedWhenClosed_(False)
+        
+        self.setWindow_(window)
+                
         # Load current settings
         self.current_settings = load_settings()
         
@@ -649,7 +654,7 @@ class AppDelegate(NSObject):
         print("AI Download Organizer started successfully!")
     
     def applicationShouldTerminateAfterLastWindowClosed_(self, sender):
-        return True
+        return False
     
     def openPreferences_(self, sender):
         self.preferencesController.showWindow_(sender)
