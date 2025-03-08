@@ -15,7 +15,7 @@ from Cocoa import (
     NSApplication, NSWindow, NSWindowStyleMaskTitled, NSWindowStyleMaskClosable,
     NSWindowStyleMaskResizable, NSBackingStoreBuffered, NSButton, NSSwitchButton,
     NSAlert, NSRoundedBezelStyle, NSMakeRect, NSApp, NSObject, NSTimer, 
-    NSTextField, NSScrollView, NSTableView, NSTableColumn, NSTextFieldCell,
+    NSTextField, NSScrollView, NSTableView, NSFocusRingTypeNone, NSTextFieldCell,
     NSButtonCell, NSFont, NSStatusBar, NSMenuItem, NSMenu, NSMutableAttributedString,
     NSFontAttributeName, NSMutableDictionary, NSAttributedString, 
     NSTableViewColumnAutoresizingStyle, NSTextAlignmentCenter
@@ -427,21 +427,51 @@ class PreferencesWindowController(objc.lookUpClass("NSWindowController")):
             return None
 
         # Create a window with a native macOS style
-        rect = NSMakeRect(200, 300, 550, 500)
+        rect = NSMakeRect(200, 300, 550, 550)  # Increased height for API key field
         style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
         window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(rect, style, NSBackingStoreBuffered, False)
         window.setTitle_("AI Download Organizer Preferences")
-        
-        # Important: Set window to not release when closed
-        window.setReleasedWhenClosed_(False)
-        
+        window.setReleasedWhenClosed_(False)  # Prevent window from being deallocated
         self.setWindow_(window)
-                
+
         # Load current settings
         self.current_settings = load_settings()
         
         # Create a vertical offset for positioning elements
-        y_offset = 440
+        y_offset = 490  # Increased to make room for API key section
+        
+        # Create section title for API Key
+        apiKeyTitle = NSTextField.alloc().initWithFrame_(NSMakeRect(20, y_offset, 480, 24))
+        apiKeyTitle.setStringValue_("OpenAI API Key")
+        apiKeyTitle.setEditable_(False)
+        apiKeyTitle.setBezeled_(False)
+        apiKeyTitle.setDrawsBackground_(False)
+        apiKeyTitle.setFont_(NSFont.boldSystemFontOfSize_(16))
+        self.window().contentView().addSubview_(apiKeyTitle)
+        
+        y_offset -= 30
+        
+        # API Key description
+        apiKeyDesc = NSTextField.alloc().initWithFrame_(NSMakeRect(20, y_offset, 480, 36))
+        apiKeyDesc.setStringValue_("A default key is provided, but you can use your own OpenAI API key for unlimited usage.")
+        apiKeyDesc.setEditable_(False)
+        apiKeyDesc.setBezeled_(False)
+        apiKeyDesc.setDrawsBackground_(False)
+        self.window().contentView().addSubview_(apiKeyDesc)
+        
+        y_offset -= 60
+        
+        # API Key input field
+        self.apiKeyField = NSTextField.alloc().initWithFrame_(NSMakeRect(20, y_offset, 510, 60))
+        self.apiKeyField.setStringValue_(self.current_settings.get("api_key", ""))
+        # Enable copy/paste functionality
+        self.apiKeyField.setEditable_(True)
+        self.apiKeyField.setSelectable_(True)
+        self.apiKeyField.setAllowsEditingTextAttributes_(True)
+        self.apiKeyField.setFocusRingType_(NSFocusRingTypeNone)
+        self.window().contentView().addSubview_(self.apiKeyField)
+        
+        y_offset -= 50  # Add more space after API key field
         
         # Create section title for General Settings
         generalTitle = NSTextField.alloc().initWithFrame_(NSMakeRect(20, y_offset, 480, 24))
@@ -539,8 +569,11 @@ class PreferencesWindowController(objc.lookUpClass("NSWindowController")):
             checkbox.setState_(1 if file_type_settings.get(file_type, True) else 0)
 
     def saveSettings_(self, sender):
+        api_key = self.apiKeyField.stringValue()
+
         # Get values from general settings checkboxes
         new_settings = {
+             "api_key": api_key,
             "rename_files": True if self.renameCheckbox.state() == 1 else False,
             "organize_folders": True if self.organizeCheckbox.state() == 1 else False,
             "file_types": {}
@@ -554,6 +587,10 @@ class PreferencesWindowController(objc.lookUpClass("NSWindowController")):
         save_settings(new_settings)
         self.current_settings = new_settings
         
+        # Update OpenAI client with new API key
+        global client
+        client = openai.OpenAI(api_key=api_key)
+
         # Show confirmation alert
         alert = NSAlert.alloc().init()
         alert.setMessageText_("Settings Saved")
@@ -614,6 +651,15 @@ class AppDelegate(NSObject):
     statusItem = objc.ivar()  # Add this line to store the status item
     
     def applicationDidFinishLaunching_(self, notification):
+         # Load settings and get API key
+        settings = load_settings()
+        api_key = settings.get("api_key", "")
+    
+    # Update OpenAI client with the API key
+        global client
+        if api_key:
+         client = openai.OpenAI(api_key=api_key)
+        
         # Create the status bar item
         statusBar = NSStatusBar.systemStatusBar()
         self.statusItem = statusBar.statusItemWithLength_(22)  # Fixed width
