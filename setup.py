@@ -28,7 +28,7 @@ OPTIONS = {
         'CFBundleIdentifier': 'com.yourdomain.aidownloadorganizer',
         'NSHighResolutionCapable': True,
         'NSPrincipalClass': 'NSApplication',
-        'LSUIElement': True,  # Makes the app appear only in the status bar, not the Dock
+        'LSUIElement': False,  # Makes the app appear only in the status bar, not the Dock
     },
     'arch': 'universal2',
     'semi_standalone': False,

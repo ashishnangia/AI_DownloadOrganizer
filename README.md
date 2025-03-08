@@ -7,6 +7,7 @@ AI Download Organizer automatically organizes your downloaded files using AI-pow
 - Uses AI to extract relevant keywords from files
 - Organizes files into appropriate folders
 - Renames files based on extracted keywords
+- Provides file type filtering options
 - Simple macOS status bar interface
 
 ## Installation
@@ -25,6 +26,11 @@ AI Download Organizer automatically organizes your downloaded files using AI-pow
 
 After launching the app, look for the folder icon (📂) in your macOS menu bar.
 Click it to access the preferences or quit the application.
+
+### Preferences
+- **Rename Files with AI Keywords**: Enable/disable automatic file renaming
+- **Organize Files in Folders**: Enable/disable sorting files into category folders
+- **File Types to Process**: Choose which file types the app should monitor and organize
 
 ## Requirements
 - macOS 10.13 or later

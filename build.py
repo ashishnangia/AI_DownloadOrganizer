@@ -8,6 +8,7 @@ import shutil
 import subprocess
 from pathlib import Path
 import platform
+import json
 
 # Configuration
 APP_NAME = 'AI_DownloadOrganizer'
@@ -15,14 +16,81 @@ BUNDLE_ID = 'com.yourdomain.aidownloadorganizer'
 MAIN_SCRIPT = 'main.py'
 VERSION = '1.0.0'
 
+# File type mappings for settings.json
+FILE_TYPES = {
+    "PDF": [".pdf"],
+    "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"],
+    "Archives": [".zip", ".rar", ".7z", ".tar", ".gz"],
+    "Code": [".py", ".js", ".java", ".c", ".cpp", ".rb", ".go", ".html", ".css", ".php", ".swift"],
+    "Spreadsheets": [".csv", ".xls", ".xlsx", ".tsv", ".ods"],
+    "Disk Images": [".dmg", ".iso"],
+    "Documents": [".doc", ".docx", ".odt", ".rtf", ".txt", ".md"],
+    "Videos": [".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv", ".webm"],
+    "Audio": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"],
+    "Presentations": [".ppt", ".pptx", ".key", ".odp"],
+    "Executables": [".exe", ".app", ".sh", ".bat", ".msi"]
+}
+
 def clean_build_dir():
     """Remove existing build artifacts"""
     print("Cleaning build directories...")
     dirs_to_clean = ['build', 'dist']
     for dir_name in dirs_to_clean:
         if os.path.exists(dir_name):
-            shutil.rmtree(dir_name)
-            print(f"Removed {dir_name}/")
+            try:
+                shutil.rmtree(dir_name)
+                print(f"Removed {dir_name}/")
+            except OSError as e:
+                print(f"Warning: Could not fully clean {dir_name}: {e}")
+                # Try to remove as many files as possible
+                for root, dirs, files in os.walk(dir_name, topdown=False):
+                    for name in files:
+                        try:
+                            os.remove(os.path.join(root, name))
+                        except:
+                            pass
+                    for name in dirs:
+                        try:
+                            os.rmdir(os.path.join(root, name))
+                        except:
+                            pass
+
+def ensure_settings_file():
+    """Create or update the settings.json file if needed"""
+    print("Checking settings.json file...")
+    if not os.path.exists('settings.json'):
+        # Create default settings
+        default_settings = {
+            "rename_files": True,
+            "organize_folders": True,
+            "file_types": {name: True for name in FILE_TYPES.keys()}
+        }
+        with open('settings.json', 'w') as f:
+            json.dump(default_settings, f, indent=4)
+        print("Created default settings.json file")
+    else:
+        # Update existing settings file to include file_types if missing
+        try:
+            with open('settings.json', 'r') as f:
+                settings = json.load(f)
+            
+            updated = False
+            if "file_types" not in settings:
+                settings["file_types"] = {name: True for name in FILE_TYPES.keys()}
+                updated = True
+            else:
+                # Make sure all file types are present
+                for file_type in FILE_TYPES.keys():
+                    if file_type not in settings["file_types"]:
+                        settings["file_types"][file_type] = True
+                        updated = True
+            
+            if updated:
+                with open('settings.json', 'w') as f:
+                    json.dump(settings, f, indent=4)
+                print("Updated settings.json with file type settings")
+        except Exception as e:
+            print(f"Error updating settings.json: {e}")
 
 def create_setup_py():
     """Create a temporary setup.py file"""
@@ -155,6 +223,7 @@ AI Download Organizer automatically organizes your downloaded files using AI-pow
 - Uses AI to extract relevant keywords from files
 - Organizes files into appropriate folders
 - Renames files based on extracted keywords
+- Provides file type filtering options
 - Simple macOS status bar interface
 
 ## Installation
@@ -173,6 +242,11 @@ AI Download Organizer automatically organizes your downloaded files using AI-pow
 
 After launching the app, look for the folder icon (📂) in your macOS menu bar.
 Click it to access the preferences or quit the application.
+
+### Preferences
+- **Rename Files with AI Keywords**: Enable/disable automatic file renaming
+- **Organize Files in Folders**: Enable/disable sorting files into category folders
+- **File Types to Process**: Choose which file types the app should monitor and organize
 
 ## Requirements
 - macOS 10.13 or later
@@ -201,6 +275,7 @@ def main():
     print(f"Python: {sys.version}")
     
     clean_build_dir()
+    ensure_settings_file()  # Make sure settings.json exists and has file_types
     setup_file = create_setup_py()
     create_readme()
     success = run_py2app(setup_file)

@@ -1,4 +1,17 @@
 {
     "rename_files": true,
-    "organize_folders": true
+    "organize_folders": true,
+    "file_types": {
+        "Archives": true,
+        "Audio": true,
+        "Code": true,
+        "Disk Images": true,
+        "Documents": true,
+        "Executables": true,
+        "Images": false,
+        "PDF": true,
+        "Presentations": true,
+        "Spreadsheets": true,
+        "Videos": true
+    }
 }
